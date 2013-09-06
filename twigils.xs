@@ -83,6 +83,34 @@ S_oopsHV (pTHX_ OP *o)
 #  define oopsHV(o) S_oopsHV(aTHX_ o)
 #endif
 
+#ifndef oopsAV
+static OP *
+S_oopsAV(pTHX_ OP *o)
+{
+  dVAR;
+
+  switch (o->op_type) {
+  case OP_PADSV:
+    o->op_type = OP_PADAV;
+    o->op_ppaddr = PL_ppaddr[OP_PADAV];
+    return ref(o, OP_RV2AV);
+
+  case OP_RV2SV:
+    o->op_type = OP_RV2AV;
+    o->op_ppaddr = PL_ppaddr[OP_RV2AV];
+    ref(o, OP_RV2AV);
+    break;
+
+  default:
+    Perl_ck_warner_d(aTHX_ packWARN(WARN_INTERNAL), "oops: oopsAV");
+    break;
+  }
+
+  return o;
+}
+#  define oopsAV(o) S_oopsAV(aTHX_ o)
+#endif
+
 #ifndef LEX_INTERPEND
 #  define LEX_INTERPEND 5
 #endif
@@ -259,7 +287,7 @@ myck_rv2any (pTHX_ OP *o, char sigil, Perl_check_t old_checker)
   if (subscript) {
     switch (subscript_type) {
     case SUBSCRIPT_ARRAY:
-      ret = newBINOP(OP_AELEM, 0, Perl_oopsAV(aTHX_ ret), Perl_scalar(aTHX_ subscript));
+      ret = newBINOP(OP_AELEM, 0, oopsAV(ret), Perl_scalar(aTHX_ subscript));
       break;
     case SUBSCRIPT_HASH:
       ret = newBINOP(OP_HELEM, 0, oopsHV(ret), Perl_jmaybe(aTHX_ subscript));

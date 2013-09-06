@@ -3,6 +3,8 @@ use warnings;
 
 package MMHelper;
 
+use File::Spec::Functions 'abs2rel';
+
 my $callchecker_h = 'callchecker0.h';
 my $callparser_h = 'callparser.h';
 
@@ -27,10 +29,11 @@ sub mm_args {
 
     return (
         clean => { FILES => join q{ } => $callchecker_h },
-        OBJECT => join(q{ },
-                       '$(BASEEXT)$(OBJ_EXT)',
-                       Devel::CallChecker::callchecker_linkable(),
-                       Devel::CallParser::callparser_linkable()),
+        OBJECT => join(q{ } => '$(BASEEXT)$(OBJ_EXT)',
+                       map { abs2rel $_ } (
+                           Devel::CallChecker::callchecker_linkable(),
+                           Devel::CallParser::callparser_linkable(),
+                       )),
     );
 }
 

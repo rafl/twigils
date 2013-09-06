@@ -115,6 +115,20 @@ S_oopsAV(pTHX_ OP *o)
 #  define LEX_INTERPEND 5
 #endif
 
+#ifndef jmaybe
+static OP *
+S_jmaybe(pTHX_ OP *o)
+{
+  if (o->op_type == OP_LIST) {
+    OP * const o2
+      = newSVREF(newGVOP(OP_GV, 0, gv_fetchpvs(";", GV_ADD|GV_NOTQUAL, SVt_PV)));
+    o = convert(OP_JOIN, 0, op_prepend_elem(OP_LIST, o2, o));
+  }
+  return o;
+}
+#  define jmaybe(o) S_jmaybe(aTHX_ o)
+#endif
+
 static PADOFFSET
 pad_add_my_pvn(pTHX_ char const *namepv, STRLEN namelen)
 {
@@ -290,7 +304,7 @@ myck_rv2any (pTHX_ OP *o, char sigil, Perl_check_t old_checker)
       ret = newBINOP(OP_AELEM, 0, oopsAV(ret), Perl_scalar(aTHX_ subscript));
       break;
     case SUBSCRIPT_HASH:
-      ret = newBINOP(OP_HELEM, 0, oopsHV(ret), Perl_jmaybe(aTHX_ subscript));
+      ret = newBINOP(OP_HELEM, 0, oopsHV(ret), jmaybe(subscript));
       break;
     case SUBSCRIPT_ARRAY_SLICE:
       ret = op_prepend_elem(OP_ASLICE, newOP(OP_PUSHMARK, 0),

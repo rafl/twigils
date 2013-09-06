@@ -53,6 +53,36 @@ extern OP *Perl_ref(pTHX_ OP *, I32);
 #  define ref(o,type) Perl_ref(aTHX_ o, type)
 #endif
 
+#ifndef oopsHV
+static OP *
+S_oopsHV (pTHX_ OP *o)
+{
+  dVAR;
+
+  switch (o->op_type) {
+  case OP_PADSV:
+  case OP_PADAV:
+    o->op_type = OP_PADHV;
+    o->op_ppaddr = PL_ppaddr[OP_PADHV];
+    return ref(o, OP_RV2HV);
+
+  case OP_RV2SV:
+  case OP_RV2AV:
+    o->op_type = OP_RV2HV;
+    o->op_ppaddr = PL_ppaddr[OP_RV2HV];
+    ref(o, OP_RV2HV);
+    break;
+
+  default:
+    Perl_ck_warner_d(aTHX_ packWARN(WARN_INTERNAL), "oops: oopsHV");
+    break;
+  }
+
+  return o;
+}
+#  define oopsHV(o) S_oopsHV(aTHX_ o)
+#endif
+
 #ifndef LEX_INTERPEND
 #  define LEX_INTERPEND 5
 #endif
@@ -232,7 +262,7 @@ myck_rv2any (pTHX_ OP *o, char sigil, Perl_check_t old_checker)
       ret = newBINOP(OP_AELEM, 0, Perl_oopsAV(aTHX_ ret), Perl_scalar(aTHX_ subscript));
       break;
     case SUBSCRIPT_HASH:
-      ret = newBINOP(OP_HELEM, 0, Perl_oopsHV(aTHX_ ret), Perl_jmaybe(aTHX_ subscript));
+      ret = newBINOP(OP_HELEM, 0, oopsHV(ret), Perl_jmaybe(aTHX_ subscript));
       break;
     case SUBSCRIPT_ARRAY_SLICE:
       ret = op_prepend_elem(OP_ASLICE, newOP(OP_PUSHMARK, 0),
@@ -242,7 +272,7 @@ myck_rv2any (pTHX_ OP *o, char sigil, Perl_check_t old_checker)
     case SUBSCRIPT_HASH_SLICE:
       ret = op_prepend_elem(OP_HSLICE, newOP(OP_PUSHMARK, 0),
                             newLISTOP(OP_HSLICE, 0, Perl_list(aTHX_ subscript),
-                                      ref(Perl_oopsHV(aTHX_ ret), OP_HSLICE)));
+                                      ref(oopsHV(ret), OP_HSLICE)));
       break;
     }
   }
